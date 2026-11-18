@@ -36,22 +36,22 @@
     "#1": {
       "0000": {
         "fixed": {
-          "file_version": "0.0.0.0",
-          "product_version": "0.0.0.0"
+          "file_version": "2.0.0.0",
+          "product_version": "2.0.0.0"
         },
         "info": {
           "0409": {
             "Comments": "",
             "CompanyName": "",
             "FileDescription": "Unir PDF",
-            "FileVersion": "",
+            "FileVersion": "2.0.0.0",
             "InternalName": "",
             "LegalCopyright": "",
             "LegalTrademarks": "",
             "OriginalFilename": "UnirPDF.exe",
             "PrivateBuild": "",
             "ProductName": "Unir PDF",
-            "ProductVersion": "",
+            "ProductVersion": "2.0 beta",
             "SpecialBuild": ""
           }
         }

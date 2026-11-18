@@ -1,15 +1,21 @@
-# Unir PDF
+# Unir PDF (Beta 2.0)
 
 Aplicación de escritorio para Windows (64 bits) que combina varios PDF en uno solo.
 Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.
 
 ## Uso
 1. Abre `UnirPDF.exe`.
-2. Añade PDF con **Añadir...** o arrastrándolos (también carpetas) a la ventana.
+2. Añade PDF con **Añadir...**, una carpeta completa con **Agregar carpeta...**, o arrastra archivos o carpetas a la ventana.
+   Los PDF de una carpeta se añaden en orden natural (`doc2.pdf` antes que `doc10.pdf`).
 3. Ordénalos con **Subir ▲ / Bajar ▼** y quita los que sobren con **Quitar**.
 4. Pulsa **Unir PDF** y elige dónde guardar el resultado.
 
 También puedes soltar varios PDF directamente sobre el icono del `.exe`.
+
+## Límites
+No hay límite en el número de archivos. En pruebas se unieron 30, 100 y 500 PDF (2.733 páginas) en menos de 1 segundo,
+y 30 PDF con imágenes (158 MB) en 0,4 s. El único límite práctico es la memoria RAM: se necesita aproximadamente
+el doble del tamaño total de los PDF.
 
 ## Compilar
 Requiere Go 1.24+ (funciona desde Linux, macOS o Windows):
@@ -26,3 +32,6 @@ Tecnología: Go + [walk](https://github.com/lxn/walk) (interfaz nativa Win32) + 
 
 ## Descarga
 [Descargar UnirPDF.exe](https://github.com/DrazerCode/unir-pdf/raw/main/descarga/UnirPDF.exe)
+
+---
+APP desarrollada por TMO Martin Paves Ibaceta

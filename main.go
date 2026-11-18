@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
@@ -37,7 +39,7 @@ func main() {
 
 	err := MainWindow{
 		AssignTo: &a.mw,
-		Title:    "Unir PDF",
+		Title:    "Unir PDF - Beta 2.0",
 		MinSize:  Size{Width: 560, Height: 420},
 		Size:     Size{Width: 720, Height: 500},
 		Layout:   VBox{},
@@ -45,7 +47,7 @@ func main() {
 			a.addFiles(files)
 		},
 		Children: []Widget{
-			Label{Text: "Añade los PDF (o arrástralos aquí), ordénalos y pulsa \"Unir PDF\"."},
+			Label{Text: "Añade PDF o una carpeta (o arrástralos aquí), ordénalos y pulsa \"Unir PDF\"."},
 			Composite{
 				Layout: HBox{MarginsZero: true},
 				Children: []Widget{
@@ -58,6 +60,7 @@ func main() {
 						Layout: VBox{MarginsZero: true},
 						Children: []Widget{
 							PushButton{Text: "Añadir...", OnClicked: a.onAdd},
+							PushButton{Text: "Agregar carpeta...", OnClicked: a.onAddFolder},
 							PushButton{Text: "Quitar", OnClicked: a.onRemove},
 							PushButton{Text: "Subir ▲", OnClicked: func() { a.move(-1) }},
 							PushButton{Text: "Bajar ▼", OnClicked: func() { a.move(1) }},
@@ -73,6 +76,17 @@ func main() {
 					Label{AssignTo: &a.status, Text: "0 archivos"},
 					HSpacer{},
 					PushButton{Text: "Unir PDF", MinSize: Size{Width: 120, Height: 32}, OnClicked: a.onMerge},
+				},
+			},
+			Composite{
+				Layout: HBox{MarginsZero: true},
+				Children: []Widget{
+					HSpacer{},
+					Label{
+						Text:      "APP desarrollada por TMO Martin Paves Ibaceta",
+						Font:      Font{PointSize: 7},
+						TextColor: walk.RGB(110, 110, 110),
+					},
 				},
 			},
 		},
@@ -106,13 +120,7 @@ func (a *app) addFiles(files []string) {
 	skipped := 0
 	for _, f := range files {
 		if info, err := os.Stat(f); err == nil && info.IsDir() {
-			// Si se suelta una carpeta, añade sus PDF en orden alfabético.
-			entries, _ := os.ReadDir(f)
-			for _, e := range entries {
-				if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".pdf") {
-					a.model.paths = append(a.model.paths, filepath.Join(f, e.Name()))
-				}
-			}
+			a.model.paths = append(a.model.paths, pdfsInFolder(f)...)
 			continue
 		}
 		if strings.EqualFold(filepath.Ext(f), ".pdf") {
@@ -133,6 +141,74 @@ func (a *app) onAdd() {
 		return
 	}
 	a.addFiles(dlg.FilePaths)
+}
+
+func (a *app) onAddFolder() {
+	dlg := &walk.FileDialog{Title: "Selecciona una carpeta con archivos PDF"}
+	if ok, err := dlg.ShowBrowseFolder(a.mw); err != nil || !ok {
+		return
+	}
+	found := pdfsInFolder(dlg.FilePath)
+	if len(found) == 0 {
+		walk.MsgBox(a.mw, "Agregar carpeta", "La carpeta seleccionada no contiene archivos PDF.", walk.MsgBoxIconInformation)
+		return
+	}
+	a.model.paths = append(a.model.paths, found...)
+	a.refresh(len(a.model.paths) - 1)
+}
+
+// pdfsInFolder devuelve los PDF de una carpeta (sin subcarpetas) en orden
+// natural: "doc2.pdf" va antes que "doc10.pdf".
+func pdfsInFolder(dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".pdf") {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Slice(names, func(i, j int) bool { return naturalLess(names[i], names[j]) })
+	paths := make([]string, len(names))
+	for i, n := range names {
+		paths[i] = filepath.Join(dir, n)
+	}
+	return paths
+}
+
+// naturalLess compara sin distinguir mayúsculas y tratando los números como valores.
+func naturalLess(a, b string) bool {
+	ra, rb := []rune(strings.ToLower(a)), []rune(strings.ToLower(b))
+	i, j := 0, 0
+	for i < len(ra) && j < len(rb) {
+		if unicode.IsDigit(ra[i]) && unicode.IsDigit(rb[j]) {
+			si := i
+			for i < len(ra) && unicode.IsDigit(ra[i]) {
+				i++
+			}
+			sj := j
+			for j < len(rb) && unicode.IsDigit(rb[j]) {
+				j++
+			}
+			na := strings.TrimLeft(string(ra[si:i]), "0")
+			nb := strings.TrimLeft(string(rb[sj:j]), "0")
+			if len(na) != len(nb) {
+				return len(na) < len(nb)
+			}
+			if na != nb {
+				return na < nb
+			}
+			continue
+		}
+		if ra[i] != rb[j] {
+			return ra[i] < rb[j]
+		}
+		i++
+		j++
+	}
+	return len(ra)-i < len(rb)-j
 }
 
 func (a *app) onRemove() {
