@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,10 @@ func Nuevo() (*Visor, error) {
 		MaxIdle:       1,
 		MaxTotal:      1,
 		RuntimeConfig: rc,
+		// Una app de ventana no tiene consola: si PDFium intentara usar
+		// os.Stdout/os.Stderr fallaría con "The handle is invalid".
+		Stdout: io.Discard,
+		Stderr: io.Discard,
 	})
 	if err != nil {
 		return nil, err
