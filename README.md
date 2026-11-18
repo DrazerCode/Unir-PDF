@@ -1,4 +1,4 @@
-# Unir PDF (Beta 3.0)
+# Unir PDF (Beta 3.0.1)
 
 Aplicación de escritorio para Windows (64 bits) que combina varios PDF en uno solo.
 Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.

@@ -18,7 +18,7 @@ import (
 	"unirpdf/visor"
 )
 
-const version = "Beta 3.0"
+const version = "Beta 3.0.1"
 
 // Tamaño máximo con el que se dibuja cada página; la vista la ajusta al panel.
 const renderW, renderH = 1000, 1400
@@ -68,6 +68,15 @@ type app struct {
 	navigating       bool
 	cancelRender     context.CancelFunc
 	bitmap           *walk.Bitmap
+}
+
+func init() {
+	// Una app de ventana (-H windowsgui) no tiene consola y os.Stdout/os.Stderr
+	// apuntan a un handle inválido. Los redirigimos a NUL para que ninguna
+	// librería falle al intentar usarlos.
+	if f, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0); err == nil {
+		os.Stdout, os.Stderr = f, f
+	}
 }
 
 func main() {
