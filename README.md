@@ -23,3 +23,6 @@ En Windows (PowerShell) define las variables con `$env:GOOS="windows"`, etc.
 Para cambiar el icono, reemplaza `winres/icon.png` y vuelve a ejecutar `go-winres make`.
 
 Tecnología: Go + [walk](https://github.com/lxn/walk) (interfaz nativa Win32) + [pdfcpu](https://github.com/pdfcpu/pdfcpu) (procesado PDF).
+
+## Descarga
+[Descargar UnirPDF.exe](https://github.com/DrazerCode/unir-pdf/raw/main/descarga/UnirPDF.exe)
