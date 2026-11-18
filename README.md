@@ -1,4 +1,4 @@
-# Unir PDF (Beta 2.0)
+# Unir PDF (Beta 3.0)
 
 Aplicación de escritorio para Windows (64 bits) que combina varios PDF en uno solo.
 Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.
@@ -8,7 +8,10 @@ Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.
 2. Añade PDF con **Añadir...**, una carpeta completa con **Agregar carpeta...**, o arrastra archivos o carpetas a la ventana.
    Los PDF de una carpeta se añaden en orden natural (`doc2.pdf` antes que `doc10.pdf`).
 3. Ordénalos con **Subir ▲ / Bajar ▼** y quita los que sobren con **Quitar**.
-4. Pulsa **Unir PDF** y elige dónde guardar el resultado.
+4. Revisa a la derecha la **vista previa** del resultado: al elegir un archivo se muestra su primera página y con
+   ◀ ▶ recorres página a página todo el documento final, pasando de un archivo al siguiente.
+   Los archivos dañados o protegidos con contraseña se marcan con (!).
+5. Pulsa **Unir PDF** y elige dónde guardar el resultado.
 
 También puedes soltar varios PDF directamente sobre el icono del `.exe`.
 
@@ -28,7 +31,11 @@ En Windows (PowerShell) define las variables con `$env:GOOS="windows"`, etc.
 
 Para cambiar el icono, reemplaza `winres/icon.png` y vuelve a ejecutar `go-winres make`.
 
-Tecnología: Go + [walk](https://github.com/lxn/walk) (interfaz nativa Win32) + [pdfcpu](https://github.com/pdfcpu/pdfcpu) (procesado PDF).
+Tecnología: Go + [walk](https://github.com/lxn/walk) (interfaz nativa Win32) + [pdfcpu](https://github.com/pdfcpu/pdfcpu) (unión de PDF)
++ [PDFium](https://pdfium.googlesource.com/pdfium/) vía [go-pdfium](https://github.com/klippa-app/go-pdfium) en WebAssembly (vista previa).
+
+La primera vez que se abre, la vista previa tarda unos segundos en estar lista; después arranca al instante
+(se guarda una caché en `%LOCALAPPDATA%\UnirPDF`).
 
 ## Descarga
 [Descargar UnirPDF.exe](https://github.com/DrazerCode/unir-pdf/raw/main/descarga/UnirPDF.exe)
