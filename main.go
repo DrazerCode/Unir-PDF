@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/lxn/walk"
@@ -23,7 +24,7 @@ import (
 	"unirpdf/visor"
 )
 
-const version = "Beta 4.0.2"
+const version = "Beta 4.0.3"
 
 // Tamaño máximo con el que se dibuja cada página; la vista la ajusta al panel.
 const renderW, renderH = 1000, 1400
@@ -202,10 +203,22 @@ func main() {
 		a.addFiles(os.Args[1:])
 	}
 	a.mw.Run()
-	a.conv.Borrar()
-	if a.visor != nil {
-		a.visor.Cerrar()
+
+	// La ventana ya se cerró: borrar los PDF temporales de las imágenes (como
+	// mucho 2 s, por si una conversión sigue en curso) y terminar el proceso
+	// de inmediato. No se espera a que PDFium u otras tareas en segundo plano
+	// acaben: Windows libera toda su memoria al salir, y esperar podía dejar el
+	// proceso colgado e invisible tras cerrar la ventana.
+	hecho := make(chan struct{})
+	go func() {
+		a.conv.Borrar()
+		close(hecho)
+	}()
+	select {
+	case <-hecho:
+	case <-time.After(2 * time.Second):
 	}
+	os.Exit(0)
 }
 
 // ---------- Lista de archivos ----------

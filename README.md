@@ -1,4 +1,4 @@
-# Unir PDF (Beta 4.0.2)
+# Unir PDF (Beta 4.0.3)
 
 Aplicación de escritorio para Windows (64 bits) que combina varios PDF e imágenes JPG en un solo PDF.
 Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.
