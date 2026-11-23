@@ -13,14 +13,16 @@ import (
 
 	"github.com/lxn/walk"
 	. "github.com/lxn/walk/declarative"
+	"github.com/lxn/win"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 
 	"unirpdf/conversor"
+	"unirpdf/nombre"
 	"unirpdf/visor"
 )
 
-const version = "Beta 4.0"
+const version = "Beta 4.0.1"
 
 // Tamaño máximo con el que se dibuja cada página; la vista la ajusta al panel.
 const renderW, renderH = 1000, 1400
@@ -621,11 +623,17 @@ func (a *app) onMerge() {
 			return
 		}
 	}
+	// Nombre propuesto: la (sub)carpeta común de los archivos, o "PDF combinados" si están sueltos.
+	nom, dir := nombre.Propuesto(a.model.paths, nombre.CarpetasSistema())
+	if dir == "" {
+		dir = filepath.Dir(a.model.paths[0])
+	}
 	dlg := &walk.FileDialog{
 		Title:          "Guardar PDF combinado",
 		Filter:         "Archivos PDF (*.pdf)|*.pdf",
-		FilePath:       "combinado.pdf",
-		InitialDirPath: filepath.Dir(a.model.paths[0]),
+		FilePath:       nom + ".pdf",
+		InitialDirPath: dir,
+		Flags:          win.OFN_OVERWRITEPROMPT, // preguntar antes de reemplazar un archivo existente
 	}
 	if ok, err := dlg.ShowSave(a.mw); err != nil || !ok {
 		return
