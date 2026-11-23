@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"image"
 	"os"
 	"path/filepath"
 	"sort"
@@ -15,10 +16,11 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 
+	"unirpdf/conversor"
 	"unirpdf/visor"
 )
 
-const version = "Beta 3.0.1"
+const version = "Beta 4.0"
 
 // Tamaño máximo con el que se dibuja cada página; la vista la ajusta al panel.
 const renderW, renderH = 1000, 1400
@@ -43,6 +45,9 @@ func (m *fileModel) Value(i int) interface{} {
 		} else {
 			info = fmt.Sprintf("%d págs.", n)
 		}
+		if conversor.EsImagen(p) {
+			info += " · imagen"
+		}
 	}
 	return fmt.Sprintf("%d.  %s   (%s)", i+1, filepath.Base(p), info)
 }
@@ -61,6 +66,7 @@ type app struct {
 	btnLst  *walk.PushButton
 
 	visor    *visor.Visor // nil hasta que PDFium termine de cargar
+	conv     *conversor.Cache
 	visorErr error
 	counting bool
 
@@ -83,6 +89,7 @@ func main() {
 	a := &app{
 		model:   &fileModel{pages: map[string]int{}, errs: map[string]string{}},
 		curFile: -1,
+		conv:    conversor.NuevaCache(),
 	}
 
 	navBtn := func(assign **walk.PushButton, text string, f func()) PushButton {
@@ -99,7 +106,7 @@ func main() {
 			a.addFiles(files)
 		},
 		Children: []Widget{
-			Label{Text: "Añade PDF o una carpeta (o arrástralos aquí), ordénalos y pulsa \"Unir PDF\". A la derecha ves cómo quedará el resultado."},
+			Label{Text: "Añade PDF o imágenes JPG, o una carpeta (también arrastrándolos aquí), ordénalos y pulsa \"Unir PDF\". A la derecha ves cómo quedará el resultado."},
 			HSplitter{
 				Children: []Widget{
 					// Columna izquierda: lista y botones.
@@ -188,6 +195,7 @@ func main() {
 		a.addFiles(os.Args[1:])
 	}
 	a.mw.Run()
+	a.conv.Borrar()
 	if a.visor != nil {
 		a.visor.Cerrar()
 	}
@@ -230,7 +238,7 @@ func (a *app) addFiles(files []string) {
 			a.model.paths = append(a.model.paths, pdfsInFolder(f)...)
 			continue
 		}
-		if strings.EqualFold(filepath.Ext(f), ".pdf") {
+		if conversor.EsAdmitido(f) {
 			a.model.paths = append(a.model.paths, f)
 		} else {
 			skipped++
@@ -239,12 +247,15 @@ func (a *app) addFiles(files []string) {
 	a.refresh(len(a.model.paths) - 1)
 	a.countPages()
 	if skipped > 0 {
-		walk.MsgBox(a.mw, "Aviso", fmt.Sprintf("Se ignoraron %d archivo(s) que no son PDF.", skipped), walk.MsgBoxIconWarning)
+		walk.MsgBox(a.mw, "Aviso", fmt.Sprintf("Se ignoraron %d archivo(s) que no son PDF ni JPG.", skipped), walk.MsgBoxIconWarning)
 	}
 }
 
 func (a *app) onAdd() {
-	dlg := &walk.FileDialog{Title: "Selecciona archivos PDF", Filter: "Archivos PDF (*.pdf)|*.pdf"}
+	dlg := &walk.FileDialog{
+		Title:  "Selecciona archivos PDF o imágenes JPG",
+		Filter: "PDF e imágenes JPG (*.pdf;*.jpg;*.jpeg)|*.pdf;*.jpg;*.jpeg|Archivos PDF (*.pdf)|*.pdf|Imágenes JPG (*.jpg;*.jpeg)|*.jpg;*.jpeg",
+	}
 	if ok, err := dlg.ShowOpenMultiple(a.mw); err != nil || !ok {
 		return
 	}
@@ -252,13 +263,13 @@ func (a *app) onAdd() {
 }
 
 func (a *app) onAddFolder() {
-	dlg := &walk.FileDialog{Title: "Selecciona una carpeta con archivos PDF"}
+	dlg := &walk.FileDialog{Title: "Selecciona una carpeta con archivos PDF o JPG"}
 	if ok, err := dlg.ShowBrowseFolder(a.mw); err != nil || !ok {
 		return
 	}
 	found := pdfsInFolder(dlg.FilePath)
 	if len(found) == 0 {
-		walk.MsgBox(a.mw, "Agregar carpeta", "La carpeta seleccionada no contiene archivos PDF.", walk.MsgBoxIconInformation)
+		walk.MsgBox(a.mw, "Agregar carpeta", "La carpeta seleccionada no contiene archivos PDF ni JPG.", walk.MsgBoxIconInformation)
 		return
 	}
 	a.addFiles(found)
@@ -292,7 +303,7 @@ func (a *app) onClear() {
 	a.refresh(-1)
 }
 
-// pdfsInFolder devuelve los PDF de una carpeta (sin subcarpetas) en orden
+// pdfsInFolder devuelve los PDF y JPG de una carpeta (sin subcarpetas) en orden
 // natural: "doc2.pdf" va antes que "doc10.pdf".
 func pdfsInFolder(dir string) []string {
 	entries, err := os.ReadDir(dir)
@@ -301,7 +312,7 @@ func pdfsInFolder(dir string) []string {
 	}
 	var names []string
 	for _, e := range entries {
-		if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".pdf") {
+		if !e.IsDir() && conversor.EsAdmitido(e.Name()) {
 			names = append(names, e.Name())
 		}
 	}
@@ -380,7 +391,11 @@ func (a *app) countPages() {
 	v := a.visor
 	go func() {
 		for _, p := range pending {
-			n, err := v.Paginas(p)
+			n := 0
+			pdf, err := a.conv.PDF(p) // las imágenes se convierten aquí, en segundo plano
+			if err == nil {
+				n, err = v.Paginas(pdf)
+			}
 			a.mw.Synchronize(func() {
 				if err != nil {
 					a.model.errs[p] = err.Error()
@@ -557,7 +572,11 @@ func (a *app) updatePreview() {
 	a.cancelRender = cancel
 	v, page := a.visor, a.curPage
 	go func() {
-		img, err := v.Dibujar(ctx, path, page, renderW, renderH)
+		pdf, err := a.conv.PDF(path)
+		var img *image.RGBA
+		if err == nil {
+			img, err = v.Dibujar(ctx, pdf, page, renderW, renderH)
+		}
 		a.mw.Synchronize(func() {
 			if ctx.Err() != nil {
 				return // el usuario ya cambió de página
@@ -591,8 +610,8 @@ func (a *app) setImage(bmp *walk.Bitmap) {
 // ---------- Unir ----------
 
 func (a *app) onMerge() {
-	if len(a.model.paths) < 2 {
-		walk.MsgBox(a.mw, "Unir PDF", "Añade al menos dos archivos PDF.", walk.MsgBoxIconInformation)
+	if len(a.model.paths) == 0 || (len(a.model.paths) == 1 && !conversor.EsImagen(a.model.paths[0])) {
+		walk.MsgBox(a.mw, "Unir PDF", "Añade al menos dos archivos (o una imagen JPG para convertirla a PDF).", walk.MsgBoxIconInformation)
 		return
 	}
 	if bad := a.badCount(); bad > 0 {
@@ -627,18 +646,38 @@ func (a *app) onMerge() {
 	inputs := append([]string(nil), a.model.paths...)
 
 	go func() {
-		conf := model.NewDefaultConfiguration()
-		conf.ValidationMode = model.ValidationRelaxed
-		err := api.MergeCreateFile(context.Background(), inputs, out, false, conf)
+		err := unir(a.conv, inputs, out)
 		a.mw.Synchronize(func() {
 			a.mw.SetEnabled(true)
 			a.updateStatus()
 			if err != nil {
 				os.Remove(out)
-				walk.MsgBox(a.mw, "Error", "No se pudieron unir los PDF:\n\n"+err.Error(), walk.MsgBoxIconError)
+				walk.MsgBox(a.mw, "Error", "No se pudo crear el PDF:\n\n"+err.Error(), walk.MsgBoxIconError)
 				return
 			}
 			walk.MsgBox(a.mw, "Listo", "PDF creado correctamente:\n\n"+out, walk.MsgBoxIconInformation)
 		})
 	}()
+}
+
+// unir convierte las imágenes a PDF (si aún no lo estaban) y une todo en out.
+func unir(conv *conversor.Cache, inputs []string, out string) error {
+	pdfs := make([]string, len(inputs))
+	for i, p := range inputs {
+		pdf, err := conv.PDF(p)
+		if err != nil {
+			return fmt.Errorf("%s: %v", filepath.Base(p), err)
+		}
+		pdfs[i] = pdf
+	}
+	if len(pdfs) == 1 { // una sola imagen: basta con copiar su PDF
+		data, err := os.ReadFile(pdfs[0])
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(out, data, 0o644)
+	}
+	conf := model.NewDefaultConfiguration()
+	conf.ValidationMode = model.ValidationRelaxed
+	return api.MergeCreateFile(context.Background(), pdfs, out, false, conf)
 }
