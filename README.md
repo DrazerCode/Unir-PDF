@@ -1,11 +1,11 @@
-# Unir PDF (Beta 4.0.1)
+# Unir PDF (Beta 4.0.2)
 
 Aplicación de escritorio para Windows (64 bits) que combina varios PDF e imágenes JPG en un solo PDF.
 Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.
 
 ## Uso
 1. Abre `UnirPDF.exe`.
-2. Añade PDF o imágenes JPG/JPEG con **Añadir...**, una carpeta completa con **Agregar carpeta...**, o arrastra archivos o carpetas a la ventana.
+2. Añade PDF o imágenes JPG/JPEG con **Añadir...**, una carpeta completa con **Agregar carpeta...** (se abre en el Escritorio), o arrastra archivos o carpetas a la ventana.
    Los PDF de una carpeta se añaden en orden natural (`doc2.pdf` antes que `doc10.pdf`).
 3. Ordénalos con **Subir ▲ / Bajar ▼** y quita los que sobren con **Quitar**.
    Las imágenes JPG/JPEG se convierten a PDF automáticamente, sin pasos extra: cada foto ocupa una hoja A4

@@ -19,10 +19,11 @@ import (
 
 	"unirpdf/conversor"
 	"unirpdf/nombre"
+	"unirpdf/selector"
 	"unirpdf/visor"
 )
 
-const version = "Beta 4.0.1"
+const version = "Beta 4.0.2"
 
 // Tamaño máximo con el que se dibuja cada página; la vista la ajusta al panel.
 const renderW, renderH = 1000, 1400
@@ -190,6 +191,10 @@ func main() {
 	}
 
 	a.updatePreview()
+	// Icono de la ventana (barra de título y barra de tareas): el mismo que lleva el .exe.
+	if ico, err := walk.NewIconFromResource("APP"); err == nil {
+		a.mw.SetIcon(ico)
+	}
 	a.startVisor()
 
 	// Archivos pasados como argumentos (p. ej. al soltarlos sobre el .exe).
@@ -265,11 +270,20 @@ func (a *app) onAdd() {
 }
 
 func (a *app) onAddFolder() {
-	dlg := &walk.FileDialog{Title: "Selecciona una carpeta con archivos PDF o JPG"}
-	if ok, err := dlg.ShowBrowseFolder(a.mw); err != nil || !ok {
+	const titulo = "Selecciona una carpeta con archivos PDF o JPG"
+	// Selector moderno de Windows, abierto en el Escritorio.
+	dir, ok, err := selector.Carpeta(uintptr(a.mw.Handle()), titulo, selector.Escritorio())
+	if err != nil { // si no está disponible, el selector clásico
+		dlg := &walk.FileDialog{Title: titulo}
+		if ok, err := dlg.ShowBrowseFolder(a.mw); err != nil || !ok {
+			return
+		}
+		dir, ok = dlg.FilePath, true
+	}
+	if !ok {
 		return
 	}
-	found := pdfsInFolder(dlg.FilePath)
+	found := pdfsInFolder(dir)
 	if len(found) == 0 {
 		walk.MsgBox(a.mw, "Agregar carpeta", "La carpeta seleccionada no contiene archivos PDF ni JPG.", walk.MsgBoxIconInformation)
 		return
