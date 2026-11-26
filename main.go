@@ -17,8 +17,10 @@ import (
 	"github.com/lxn/win"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
+	"github.com/skip2/go-qrcode"
 
 	"unirpdf/conversor"
+	"unirpdf/escaner"
 	"unirpdf/nombre"
 	"unirpdf/selector"
 	"unirpdf/visor"
@@ -78,6 +80,10 @@ type app struct {
 	navigating       bool
 	cancelRender     context.CancelFunc
 	bitmap           *walk.Bitmap
+
+	esc    *escaner.Servidor // página del escáner para teléfonos (nil si no pudo iniciarse)
+	escErr error
+	lblEsc *walk.Label
 }
 
 func init() {
@@ -176,6 +182,8 @@ func main() {
 			Composite{
 				Layout: HBox{MarginsZero: true},
 				Children: []Widget{
+					PushButton{Text: "📱 Escáner móvil...", OnClicked: a.onEscaner},
+					Label{AssignTo: &a.lblEsc, Text: "Iniciando escáner móvil…", TextColor: walk.RGB(60, 60, 60)},
 					HSpacer{},
 					Label{
 						Text:      "APP desarrollada por TMO Martin Paves Ibaceta",
@@ -197,6 +205,7 @@ func main() {
 		a.mw.SetIcon(ico)
 	}
 	a.startVisor()
+	a.startEscaner()
 
 	// Archivos pasados como argumentos (p. ej. al soltarlos sobre el .exe).
 	if len(os.Args) > 1 {
@@ -634,6 +643,88 @@ func (a *app) setImage(bmp *walk.Bitmap) {
 		a.bitmap.Dispose()
 	}
 	a.bitmap = bmp
+}
+
+// ---------- Escáner móvil ----------
+
+// startEscaner abre en la red local la página para escanear con el teléfono.
+// Los PDF recibidos se guardan en Escritorio\Escaneos\<paciente> y se añaden a la lista.
+func (a *app) startEscaner() {
+	base := selector.Escritorio()
+	if base == "" {
+		base, _ = os.UserHomeDir()
+	}
+	equipo, _ := os.Hostname()
+	s := &escaner.Servidor{
+		Destino: filepath.Join(base, "Escaneos"),
+		Equipo:  equipo,
+		AlRecibir: func(ruta, paciente string) {
+			a.mw.Synchronize(func() {
+				a.addFiles([]string{ruta})
+				a.lblEsc.SetText(fmt.Sprintf("Escaneo recibido %s: %s", time.Now().Format("15:04"), filepath.Base(ruta)))
+			})
+		},
+	}
+	if err := s.Iniciar(); err != nil {
+		a.escErr = err
+		a.lblEsc.SetText("Escáner móvil no disponible")
+		return
+	}
+	a.esc = s
+	if u := s.URLs(); len(u) > 0 {
+		a.lblEsc.SetText("Escáner móvil: " + u[0])
+	} else {
+		a.lblEsc.SetText("Escáner móvil: sin conexión de red")
+	}
+}
+
+// onEscaner muestra la dirección de la página y un código QR para abrirla con el teléfono.
+func (a *app) onEscaner() {
+	if a.esc == nil {
+		msg := "El escáner móvil no está disponible."
+		if a.escErr != nil {
+			msg += "\n\n" + a.escErr.Error()
+		}
+		walk.MsgBox(a.mw, "Escáner móvil", msg, walk.MsgBoxIconWarning)
+		return
+	}
+	urls := a.esc.URLs()
+	if len(urls) == 0 {
+		walk.MsgBox(a.mw, "Escáner móvil", "Este PC no está conectado a ninguna red. Conéctalo a la red del policlínico y vuelve a intentarlo.", walk.MsgBoxIconWarning)
+		return
+	}
+	var qrBmp *walk.Bitmap
+	if q, err := qrcode.New(urls[0], qrcode.Medium); err == nil {
+		qrBmp, _ = walk.NewBitmapFromImageForDPI(q.Image(320), 96)
+	}
+	texto := "1. Conecta el teléfono (Android o iPhone) al Wi-Fi del policlínico.\r\n" +
+		"2. Escanea este código con la cámara o abre en el navegador:\r\n\r\n    " + strings.Join(urls, "\r\n    ") + "\r\n\r\n" +
+		"3. Fotografía las hojas, escribe el nombre del paciente y pulsa \"Enviar a Unir PDF\".\r\n\r\n" +
+		"El PDF se guarda en " + a.esc.Destino + "\\<paciente> y aparece en esta lista.\r\n" +
+		"No se usa internet: todo queda dentro de la red del hospital.\r\n" +
+		"Unir PDF debe estar abierto mientras se escanea."
+
+	var dlg *walk.Dialog
+	Dialog{
+		AssignTo: &dlg,
+		Title:    "Escáner móvil",
+		Layout:   VBox{},
+		MinSize:  Size{Width: 520, Height: 560},
+		Children: []Widget{
+			ImageView{Image: qrBmp, Mode: ImageViewModeIdeal, MinSize: Size{Width: 320, Height: 320}},
+			TextEdit{Text: texto, ReadOnly: true, MinSize: Size{Height: 170}},
+			Composite{
+				Layout: HBox{MarginsZero: true},
+				Children: []Widget{
+					HSpacer{},
+					PushButton{Text: "Cerrar", OnClicked: func() { dlg.Accept() }},
+				},
+			},
+		},
+	}.Run(a.mw)
+	if qrBmp != nil {
+		qrBmp.Dispose()
+	}
 }
 
 // ---------- Unir ----------

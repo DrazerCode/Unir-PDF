@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fa8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Escáner · Unir PDF</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<!-- Pantalla principal: paciente, páginas y envío -->
+<main id="vista-lista" class="vista">
+  <header class="barra">
+    <h1>Escáner <span>· Unir PDF</span></h1>
+    <div id="conexion" class="conexion">Conectando…</div>
+  </header>
+
+  <section class="paciente">
+    <label for="paciente">Nombre del paciente</label>
+    <input id="paciente" type="text" autocomplete="off" autocapitalize="words" spellcheck="false"
+           placeholder="Ej.: Juan Pérez González" maxlength="80">
+  </section>
+
+  <section id="paginas" class="paginas" aria-live="polite"></section>
+  <p id="vacio" class="vacio">Toma una foto de cada hoja del documento.<br>
+    Podrás ajustar el recorte, girarla y mejorar el texto antes de enviarla.</p>
+
+  <div class="acciones-captura">
+    <button id="btn-camara" class="btn grande primario" type="button">📷 Tomar foto</button>
+    <button id="btn-galeria" class="btn grande" type="button">🖼️ Galería</button>
+  </div>
+
+  <footer class="pie">
+    <button id="btn-enviar" class="btn grande enviar" type="button" disabled>Enviar a Unir PDF</button>
+  </footer>
+</main>
+
+<!-- Editor: paso 1 recorte, paso 2 giro y filtro -->
+<section id="vista-editor" class="vista oculto" aria-label="Editar página">
+  <header class="barra">
+    <button id="ed-cancelar" class="btn texto" type="button">Cancelar</button>
+    <h2 id="ed-titulo">Ajusta los bordes</h2>
+    <span class="relleno"></span>
+  </header>
+
+  <div id="paso-recorte" class="paso">
+    <div id="lienzo-caja" class="lienzo-caja">
+      <canvas id="lienzo-recorte"></canvas>
+      <canvas id="lupa" class="lupa oculto" width="240" height="240"></canvas>
+    </div>
+    <p class="ayuda">Arrastra los puntos azules a las esquinas de la hoja.</p>
+    <div class="botonera">
+      <button id="ed-auto" class="btn" type="button">✨ Detectar</button>
+      <button id="ed-todo" class="btn" type="button">⬚ Foto completa</button>
+      <button id="ed-siguiente" class="btn primario" type="button">Siguiente ›</button>
+    </div>
+  </div>
+
+  <div id="paso-ajuste" class="paso oculto">
+    <div class="vista-previa"><img id="ed-previa" alt="Vista previa de la página"></div>
+    <div class="filtros" id="filtros" role="radiogroup" aria-label="Filtro"></div>
+    <div class="botonera">
+      <button id="ed-izq" class="btn" type="button" aria-label="Girar a la izquierda">⟲</button>
+      <button id="ed-der" class="btn" type="button" aria-label="Girar a la derecha">⟳</button>
+      <button id="ed-atras" class="btn" type="button">‹ Recorte</button>
+    </div>
+    <div class="botonera">
+      <button id="ed-otra" class="btn" type="button">Guardar y tomar otra</button>
+      <button id="ed-guardar" class="btn primario" type="button">Guardar página</button>
+    </div>
+  </div>
+</section>
+
+<!-- Mensajes y progreso -->
+<div id="cubierta" class="cubierta oculto" role="dialog" aria-modal="true">
+  <div class="caja">
+    <div id="cub-icono" class="girando"></div>
+    <p id="cub-texto">Procesando…</p>
+    <progress id="cub-progreso" max="100" class="oculto"></progress>
+    <div id="cub-botones" class="botonera"></div>
+  </div>
+</div>
+
+<input id="in-camara" type="file" accept="image/*" capture="environment" hidden>
+<input id="in-galeria" type="file" accept="image/*" multiple hidden>
+
+<script src="imagen.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

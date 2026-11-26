@@ -22,6 +22,27 @@ Un único `UnirPDF.exe` portable: no requiere instalación ni dependencias.
 
 También puedes soltar varios PDF directamente sobre el icono del `.exe`.
 
+## Escáner móvil (Android y iPhone, sin internet)
+Mientras Unir PDF está abierto, sirve en la red local una página para escanear documentos con el teléfono.
+Abajo a la izquierda de la ventana se ve su dirección (p. ej. `http://192.168.1.20:8080`) y el botón
+**📱 Escáner móvil...** muestra un código QR para abrirla con la cámara del teléfono.
+
+1. Conecta el teléfono al Wi-Fi del policlínico y abre la dirección (o escanea el QR).
+2. **Tomar foto** (o **Galería**) por cada hoja. La hoja se detecta sola; se pueden ajustar las 4 esquinas
+   arrastrándolas (con lupa) y luego girar y elegir filtro: *Documento* (fondo blanco, conserva colores),
+   *Gris nítido*, *Blanco y negro* (máximo contraste para texto manuscrito o impreso) u *Original*.
+3. En la lista se reordenan las páginas (◀ ▶), se editan (✏️), se repiten (📷) o se quitan (🗑️).
+4. Escribe el nombre del paciente y pulsa **Enviar a Unir PDF**.
+
+El PDF se guarda en `Escritorio\Escaneos\<paciente>\<paciente>.pdf` (si ya existe, `<paciente> (2).pdf`)
+y se añade automáticamente a la lista de Unir PDF. Todo el procesamiento de las fotos ocurre en el teléfono
+y la página va incrustada en el `.exe`: no se usa internet y los datos no salen de la red del hospital.
+
+- Puerto 8080 (si está ocupado, el primero libre entre 8081 y 8089).
+- La primera vez Windows puede preguntar si permite a Unir PDF comunicarse en redes privadas: hay que aceptar.
+- Para otras apps (como la app de Android) hay una API: `GET /api/ping` y `POST /api/subir`
+  (multipart: `paciente` + `pdf`), además de `POST /api/escaneo` (multipart: `paciente` + varias `paginas` JPEG).
+
 ## Límites
 No hay límite en el número de archivos. En pruebas se unieron 30, 100 y 500 PDF (2.733 páginas) en menos de 1 segundo,
 y 30 PDF con imágenes (158 MB) en 0,4 s. El único límite práctico es la memoria RAM: se necesita aproximadamente
